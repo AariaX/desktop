@@ -1,6 +1,16 @@
 name: macOS Release Build
 
 on:
+  workflow_dispatch:
+    inputs:
+      build-version:
+        description: 'The version to build'
+        required: true
+        type: string
+      release-branch:
+        description: 'The branch to build'
+        required: true
+        type: string    
   workflow_call:
     inputs:
       build-version:
@@ -25,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.DEPLOY_KEY }}
+          token: ${{ secrets.TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
