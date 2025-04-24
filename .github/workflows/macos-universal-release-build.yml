@@ -1,6 +1,7 @@
 name: macOS Release Build
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       build-version:
