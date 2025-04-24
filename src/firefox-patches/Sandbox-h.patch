@@ -1,0 +1,12 @@
+diff --git a/security/sandbox/mac/Sandbox.h b/security/sandbox/mac/Sandbox.h
+index 35001822920568692ee518409945b7d250752e1b..a18c6892392e9c8aca09e0cd57fe0dd8a7b53549 100644
+--- a/security/sandbox/mac/Sandbox.h
++++ b/security/sandbox/mac/Sandbox.h
+@@ -7,6 +7,7 @@
+ #define mozilla_Sandbox_h
+ 
+ #include <string>
++#include <vector>
+ #include "mozilla/ipc/UtilityProcessSandboxing.h"
+ 
+ enum MacSandboxType {
