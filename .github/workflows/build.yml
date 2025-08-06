@@ -56,12 +56,6 @@ jobs:
     outputs:
       buildids: ${{ steps.get.outputs.bid }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.TOKEN }}
-
       - id: get
         shell: bash -xe {0}
         run: |
@@ -77,26 +71,6 @@ jobs:
           echo "GITHUB_REPOSITORY: ${{ github.repository }}"
           echo "GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}"
           echo "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Check if correct branch
-        if: ${{ inputs.create_release }}
-        run: |
-          echo "Checking if we are on the correct branch"
-          git branch
-          git status
-          git branch --show-current
-          branch="${{ inputs.update_branch }}"
-          if [[ $branch == "twilight" ]]; then
-            branch="dev"
-          elif [[ $branch == "release" ]]; then
-            branch="stable"
-          fi
-          if [[ $(git branch --show-current) != $branch ]]; then
-            echo ">>> Branch mismatch"
-          # exit 1
-          else
-            echo ">>> Branch matches"
-          fi
 
   start-self-host:
     runs-on: ubuntu-latest
