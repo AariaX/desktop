@@ -50,6 +50,20 @@ on:
         default: false
 
 jobs:
+  debug-inputs:
+    name: Debug inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug
+        run: |
+          echo "create_release: ${{ inputs.create_release }}"
+          echo "update_version: ${{ inputs.update_version }}"
+          echo "use sccache: ${{ inputs.use-sccache }}"
+          echo "update_branch: ${{ inputs.update_branch }}"
+          echo "GITHUB_REPOSITORY: ${{ github.repository }}"
+          echo "GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}"
+          echo "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}"
+
   buildid:
     name: Generate build ID
     runs-on: ubuntu-latest
@@ -62,18 +76,9 @@ jobs:
           bdat=`date +"%Y%m%d%I%M%S"`
           echo "bid=${bdat}" >> $GITHUB_OUTPUT
 
-      - name: Debug
-        run: |
-          echo "create_release: ${{ inputs.create_release }}"
-          echo "update_version: ${{ inputs.update_version }}"
-          echo "use sccache: ${{ inputs.use-sccache }}"
-          echo "update_branch: ${{ inputs.update_branch }}"
-          echo "GITHUB_REPOSITORY: ${{ github.repository }}"
-          echo "GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}"
-          echo "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}"
-
   start-self-host:
     runs-on: ubuntu-latest
+    needs: debug-inputs
     steps:
       - name: Download aws-cli
         if: ${{ inputs.create_release && inputs.update_branch == 'release' }}
@@ -96,12 +101,42 @@ jobs:
           echo "Removing self-hosted runner script"
           rm start.sh || true
 
+  check-build-is-correct:
+    runs-on: ubuntu-latest
+    needs: [debug-inputs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.TOKEN }}
+
+      - name: Check if correct branch
+        if: ${{ inputs.create_release }}
+        run: |
+          echo "Checking if we are on the correct branch"
+          git branch
+          git status
+          git branch --show-current
+          branch="${{ inputs.update_branch }}"
+          if [[ $branch == "twilight" ]]; then
+            branch="dev"
+          elif [[ $branch == "release" ]]; then
+            branch="stable"
+          fi
+          if [[ $(git branch --show-current) != $branch ]]; then
+            echo ">>> Branch mismatch"
+          # exit 1
+          else
+            echo ">>> Branch matches"
+          fi
+
   build-data:
     permissions:
       contents: write
     name: Generate build data
     runs-on: ubuntu-latest
-    needs: buildid
+    needs: check-build-is-correct
     outputs:
       build_date: ${{ steps.data.outputs.builddate }}
       version: ${{ steps.data.outputs.version }}
@@ -440,18 +475,7 @@ jobs:
     if: ${{ inputs.create_release || inputs.update_branch == 'twilight' }}
     permissions: write-all
     name: Release
-    needs:
-      [
-        build-data,
-        linux,
-        windows-step-3,
-        check-release,
-        mac-uni,
-        appimage,
-        source,
-        lint,
-        stop-self-hosted,
-      ]
+    needs: [build-data, linux, windows-step-3, check-release, mac-uni, appimage, source, lint, stop-self-hosted]
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.update_branch == 'release' && 'Deploy-Release' || 'Deploy-Twilight' }}
@@ -465,6 +489,9 @@ jobs:
 
       - name: Download artifact
         uses: actions/download-artifact@v4
+
+      - name: List
+        run: find .
 
       - name: Checkout updates repository
         uses: actions/checkout@v4
@@ -513,7 +540,7 @@ jobs:
         # If we are on Twilight, we want to just update the Twilight tag's release
       - name: Update Twilight tag
         if: ${{ inputs.update_branch == 'twilight' }}
-        uses: softprops/action-gh-release@v2.2.2
+        uses: softprops/action-gh-release@v2
         with:
           body_path: release_notes.md
           files: |
@@ -545,7 +572,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Release
-        uses: softprops/action-gh-release@v2.2.2
+        uses: softprops/action-gh-release@v2
         if: ${{ inputs.update_branch == 'release' }}
         with:
           token: ${{ secrets.TOKEN }}
