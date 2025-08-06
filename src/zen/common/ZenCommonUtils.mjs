@@ -1,4 +1,8 @@
-var gZenOperatingSystemCommonUtils = {
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+window.gZenOperatingSystemCommonUtils = {
   kZenOSToSmallName: {
     WINNT: 'windows',
     Darwin: 'macos',
@@ -11,7 +15,8 @@ var gZenOperatingSystemCommonUtils = {
   },
 };
 
-class ZenMultiWindowFeature {
+/* eslint-disable no-unused-vars */
+class nsZenMultiWindowFeature {
   constructor() {}
 
   static get browsers() {
@@ -23,19 +28,20 @@ class ZenMultiWindowFeature {
   }
 
   static get isActiveWindow() {
-    return ZenMultiWindowFeature.currentBrowser === window;
+    return nsZenMultiWindowFeature.currentBrowser === window;
   }
 
   windowIsActive(browser) {
-    return browser === ZenMultiWindowFeature.currentBrowser;
+    return browser === nsZenMultiWindowFeature.currentBrowser;
   }
 
   async foreachWindowAsActive(callback) {
-    if (!ZenMultiWindowFeature.isActiveWindow) {
+    if (!nsZenMultiWindowFeature.isActiveWindow) {
       return;
     }
-    for (const browser of ZenMultiWindowFeature.browsers) {
+    for (const browser of nsZenMultiWindowFeature.browsers) {
       try {
+        if (browser.closed) continue;
         await callback(browser);
       } catch (e) {
         console.error(e);
@@ -44,14 +50,16 @@ class ZenMultiWindowFeature {
   }
 }
 
-class ZenDOMOperatedFeature {
+/* eslint-disable no-unused-vars */
+class nsZenDOMOperatedFeature {
   constructor() {
     var initBound = this.init.bind(this);
     document.addEventListener('DOMContentLoaded', initBound, { once: true });
   }
 }
 
-class ZenPreloadedFeature {
+/* eslint-disable no-unused-vars */
+class nsZenPreloadedFeature {
   constructor() {
     var initBound = this.init.bind(this);
     document.addEventListener('MozBeforeInitialXULLayout', initBound, { once: true });
@@ -64,12 +72,35 @@ var gZenCommonActions = {
     if (currentUrl) {
       let str = Cc['@mozilla.org/supports-string;1'].createInstance(Ci.nsISupportsString);
       str.data = currentUrl;
-      let transferable = Cc['@mozilla.org/widget/transferable;1'].createInstance(Ci.nsITransferable);
-      transferable.init(getLoadContext());
+      let transferable = Cc['@mozilla.org/widget/transferable;1'].createInstance(
+        Ci.nsITransferable
+      );
+      transferable.init(window.docShell.QueryInterface(Ci.nsILoadContext));
       transferable.addDataFlavor('text/plain');
       transferable.setTransferData('text/plain', str);
       Services.clipboard.setData(transferable, null, Ci.nsIClipboard.kGlobalClipboard);
-      gZenUIManager.showToast('zen-copy-current-url-confirmation');
+      let button;
+      if (
+        Services.zen.canShare() &&
+        (currentUrl.startsWith('http://') || currentUrl.startsWith('https://'))
+      ) {
+        button = {
+          id: 'zen-copy-current-url-button',
+          command: (event) => {
+            const buttonRect = event.target.getBoundingClientRect();
+            Services.zen.share(
+              Services.io.newURI(currentUrl),
+              '',
+              '',
+              buttonRect.left,
+              window.innerHeight - buttonRect.bottom,
+              buttonRect.width,
+              buttonRect.height
+            );
+          },
+        };
+      }
+      gZenUIManager.showToast('zen-copy-current-url-confirmation', { button, timeout: 3000 });
     }
   },
   copyCurrentURLAsMarkdownToClipboard() {
@@ -79,8 +110,10 @@ var gZenCommonActions = {
       const markdownLink = `[${tabTitle}](${currentUrl})`;
       let str = Cc['@mozilla.org/supports-string;1'].createInstance(Ci.nsISupportsString);
       str.data = markdownLink;
-      let transferable = Cc['@mozilla.org/widget/transferable;1'].createInstance(Ci.nsITransferable);
-      transferable.init(getLoadContext());
+      let transferable = Cc['@mozilla.org/widget/transferable;1'].createInstance(
+        Ci.nsITransferable
+      );
+      transferable.init(window.docShell.QueryInterface(Ci.nsILoadContext));
       transferable.addDataFlavor('text/plain');
       transferable.setTransferData('text/plain', str);
       Services.clipboard.setData(transferable, null, Ci.nsIClipboard.kGlobalClipboard);

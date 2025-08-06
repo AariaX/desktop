@@ -1,3 +1,6 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 export class ZenGlanceChild extends JSWindowActorChild {
   constructor() {
     super();
@@ -33,11 +36,6 @@ export class ZenGlanceChild extends JSWindowActorChild {
     return this._hoverActivationDelay;
   }
 
-  async receiveMessage(message) {
-    switch (message.name) {
-    }
-  }
-
   async initiateGlance() {
     this.mouseIsDown = false;
     const activationMethod = await this.getActivationMethod();
@@ -46,7 +44,11 @@ export class ZenGlanceChild extends JSWindowActorChild {
       this.contentWindow.addEventListener('mouseup', this.mouseUpListener);
 
       this.contentWindow.document.removeEventListener('click', this.clickListener);
-    } else if (activationMethod === 'ctrl' || activationMethod === 'alt' || activationMethod === 'shift') {
+    } else if (
+      activationMethod === 'ctrl' ||
+      activationMethod === 'alt' ||
+      activationMethod === 'shift'
+    ) {
       this.contentWindow.document.addEventListener('click', this.clickListener, { capture: true });
 
       this.contentWindow.removeEventListener('mousedown', this.mouseDownListener);
@@ -67,8 +69,8 @@ export class ZenGlanceChild extends JSWindowActorChild {
     const rect = target.getBoundingClientRect();
     this.sendAsyncMessage('ZenGlance:OpenGlance', {
       url,
-      x: rect.left,
-      y: rect.top,
+      clientX: rect.left,
+      clientY: rect.top,
       width: rect.width,
       height: rect.height,
     });

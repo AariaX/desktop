@@ -1,9 +1,9 @@
 diff --git a/toolkit/content/widgets/infobar.css b/toolkit/content/widgets/infobar.css
-index 7818f1ef1dcc62e184bd5e3e8d6d936acf77d2ea..4803c07a183e2df70e8fdc9769bb4bb15a73f39b 100644
+index 4547df3f3573e95e616c803bc37c7da61bbe6b58..b0540c058d7d31ce929319e5ad9381889b9b6c60 100644
 --- a/toolkit/content/widgets/infobar.css
 +++ b/toolkit/content/widgets/infobar.css
-@@ -94,3 +94,18 @@ strong {
- :host([type=system]) .content {
+@@ -97,3 +97,18 @@ strong {
+ :host([type="system"]) .content {
    margin-inline-start: 0;
  }
 +

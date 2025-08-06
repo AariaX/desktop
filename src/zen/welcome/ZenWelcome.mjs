@@ -1,9 +1,18 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 {
   var _tabsToPin = [];
   var _tabsToPinEssentials = [];
 
+  const kZenElementsToIgnore = ['zen-browser-background', 'zen-toast-container'];
+
   function clearBrowserElements() {
     for (const element of document.getElementById('browser').children) {
+      if (kZenElementsToIgnore.includes(element.id)) {
+        continue;
+      }
       element.style.display = 'none';
     }
   }
@@ -42,17 +51,81 @@
     window.MozXULElement.insertFTLIfNeeded('browser/zen-welcome.ftl');
   }
 
-  function openInitialPinTab() {
-    const tabs = ['https://reddit.com/r/zen_browser', 'https://x.com/zen_browser'];
-    for (const url of tabs) {
-      const tab = window.gBrowser.addTrustedTab(url, {
+  var _iconToData = {};
+
+  async function getIconData(iconURL) {
+    if (_iconToData[iconURL]) {
+      return _iconToData[iconURL];
+    }
+    const response = await fetch(iconURL);
+    if (!response.ok) {
+      console.error(`Failed to fetch icon: ${iconURL}`);
+      return null;
+    }
+    const blob = await response.blob();
+    const reader = new FileReader();
+    const data = await new Promise((resolve) => {
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(',')[1];
+        _iconToData[iconURL] = `data:${blob.type};base64,${base64Data}`;
+        resolve(_iconToData[iconURL]);
+      };
+      reader.readAsDataURL(blob);
+    });
+    return data;
+  }
+
+  async function setCachedFaviconForURL(pageUrl, iconURL) {
+    try {
+      await PlacesUtils.favicons.setFaviconForPage(
+        Services.io.newURI(pageUrl),
+        Services.io.newURI(iconURL),
+        Services.io.newURI(iconURL)
+      );
+    } catch (ex) {
+      console.error(`Failed to set cached favicon for ${pageUrl}: ${ex}`);
+    }
+  }
+
+  async function openInitialPinTab() {
+    const tabs = [
+      [
+        'https://reddit.com/r/zen_browser',
+        'Zen on Reddit',
+        'chrome://browser/content/zen-images/favicons/reddit.ico',
+      ],
+      [
+        'https://x.com/zen_browser',
+        'Zen on Twitter',
+        'chrome://browser/content/zen-images/favicons/x.ico',
+      ],
+    ];
+
+    await PlacesUtils.history.insertMany(
+      tabs.map((site) => ({
+        url: site[0],
+        visits: [
+          {
+            transition: PlacesUtils.history.TRANSITIONS.TYPED,
+          },
+        ],
+      }))
+    );
+
+    for (const site of tabs) {
+      const tab = window.gBrowser.addTrustedTab(site[0], {
         inBackground: true,
+        createLazyBrowser: true,
+        lazyTabTitle: site[1],
       });
+      const iconData = await getIconData(site[2]);
+      await setCachedFaviconForURL(site[0], iconData);
+      gBrowser.setIcon(tab, iconData);
       _tabsToPin.push(tab);
     }
   }
 
-  class ZenWelcomePages {
+  class nsZenWelcomePages {
     constructor(pages) {
       this._currentPage = -1;
       this._pages = pages;
@@ -87,6 +160,7 @@
     async fadeInButtons(page) {
       const buttons = document.getElementById('zen-welcome-page-sidebar-buttons');
       let i = 0;
+      const insertedButtons = [];
       for (const button of page.buttons) {
         const buttonElement = document.createXULElement('button');
         document.l10n.setAttributes(buttonElement, button.l10n);
@@ -100,6 +174,8 @@
             this.next();
           }
         });
+        buttonElement.style.pointerEvents = 'none'; // Disable pointer events until animation is done
+        insertedButtons.push(buttonElement);
         buttons.appendChild(buttonElement);
       }
       await animate(
@@ -111,6 +187,9 @@
           bounce: 0.2,
         }
       );
+      for (const button of insertedButtons) {
+        button.style.pointerEvents = ''; // Enable pointer events after animation
+      }
     }
 
     async fadeInContent() {
@@ -182,12 +261,13 @@
         return;
       }
       await Promise.all([this.fadeInTitles(currentPage), this.fadeInButtons(currentPage)]);
-      currentPage.fadeIn();
+      await currentPage.fadeIn();
       await this.fadeInContent();
     }
 
     async finish() {
-      ZenWorkspaces.reorganizeTabsAfterWelcome();
+      _iconToData = undefined; // Unload icon data
+      gZenWorkspaces.reorganizeTabsAfterWelcome();
       await animate('#zen-welcome-page-content', { x: [0, '100%'] }, { bounce: 0 });
       document.getElementById('zen-welcome-page-content').remove();
       await this.animHeart();
@@ -196,21 +276,31 @@
       document.getElementById('zen-welcome').remove();
       document.documentElement.removeAttribute('zen-welcome-stage');
       for (const element of document.getElementById('browser').children) {
+        if (kZenElementsToIgnore.includes(element.id)) {
+          continue;
+        }
         element.style.opacity = 0;
         element.style.removeProperty('display');
       }
       gZenUIManager.updateTabsToolbar();
-      await animate('#browser > *', { opacity: [0, 1] });
+      let elementsToIgnore = kZenElementsToIgnore.map((id) => `#${id}`).join(', ');
+      await animate(`#browser > *:not(${elementsToIgnore})`, { opacity: [0, 1] });
       gZenUIManager.showToast('zen-welcome-finished');
     }
 
     _pinRemainingTabs() {
       for (const tab of _tabsToPin) {
+        tab.setAttribute('zen-workspace-id', gZenWorkspaces.activeWorkspace);
         gBrowser.pinTab(tab);
       }
       for (const tab of _tabsToPinEssentials) {
+        tab.removeAttribute('pending'); // Make it appear loaded
         gZenPinnedTabManager.addToEssentials(tab);
       }
+      gZenFolders.createFolder(_tabsToPin, {
+        renameFolder: false,
+        label: 'Zen Basics',
+      });
     }
 
     async animHeart() {
@@ -228,6 +318,66 @@
           delay: 0.2,
           bounce: 0,
         }
+      );
+    }
+  }
+
+  class ZenSearchEngineStore {
+    constructor() {
+      this._engines = [];
+    }
+
+    async init() {
+      const visibleEngines = await Services.search.getVisibleEngines();
+      this.initSpecificEngine(visibleEngines);
+    }
+
+    getEngines() {
+      return this._engines.filter(
+        (engine) =>
+          !(
+            engine.name.toLowerCase().includes('wikipedia') ||
+            engine.name.toLowerCase().includes('ebay')
+          )
+      );
+    }
+
+    initSpecificEngine(engines) {
+      for (const engine of engines) {
+        try {
+          this._engines.push(this._cloneEngine(engine));
+        } catch (e) {
+          // Ignore engines that throw an exception when cloning.
+          console.error(e);
+        }
+      }
+    }
+
+    getEngineByName(name) {
+      return this._engines.find((engine) => engine.name == name);
+    }
+
+    _cloneEngine(aEngine) {
+      const clonedObj = {};
+
+      for (const i of ['name', 'alias', '_iconURI', 'hidden']) {
+        clonedObj[i] = aEngine[i];
+      }
+
+      clonedObj.originalEngine = aEngine;
+
+      return clonedObj;
+    }
+
+    async getDefaultEngine() {
+      let engineName = await Services.search.getDefault();
+      return this.getEngineByName(engineName._name);
+    }
+
+    async setDefaultEngine(engine) {
+      await Services.search.setDefault(
+        engine.originalEngine,
+        Ci.nsISearchService.CHANGE_REASON_USER
       );
     }
   }
@@ -282,9 +432,11 @@
           document.getElementById('zen-welcome-page-content').appendChild(fragment);
         },
         async fadeOut() {
-          const shouldSetDefault = document.getElementById('zen-welcome-set-default-browser').checked;
+          const shouldSetDefault = document.getElementById(
+            'zen-welcome-set-default-browser'
+          ).checked;
           if (AppConstants.HAVE_SHELL_SERVICE && shouldSetDefault) {
-            let shellSvc = getShellService();
+            let shellSvc = window.getShellService();
             if (!shellSvc) {
               return;
             }
@@ -296,6 +448,72 @@
               return;
             }
           }
+        },
+      },
+      {
+        text: [
+          {
+            id: 'zen-welcome-default-search-title',
+          },
+          {
+            id: 'zen-welcome-default-search-description',
+          },
+        ],
+        buttons: [
+          {
+            l10n: 'zen-welcome-next-action',
+            onclick: async () => {
+              return true;
+            },
+          },
+        ],
+        async fadeIn() {
+          const content = document.getElementById('zen-welcome-page-content');
+          const engineStore = new ZenSearchEngineStore();
+          engineStore.init();
+
+          content.setAttribute('select-engine', 'true');
+
+          const defaultEngine = await Services.search.getDefault();
+          const promises = [];
+          engineStore.getEngines().forEach((engine) => {
+            const label = document.createElement('label');
+            const engineId = engine.name.replace(/\s+/g, '-').toLowerCase();
+            label.setAttribute('for', engineId);
+            const input = document.createElement('input');
+            input.setAttribute('type', 'radio');
+            input.setAttribute('id', engineId);
+            input.setAttribute('name', 'zen-welcome-set-default-browser');
+            input.setAttribute('hidden', 'true');
+            if (engine.name === defaultEngine.name) {
+              input.setAttribute('checked', true);
+            }
+            label.appendChild(input);
+            const engineLabel = document.createXULElement('label');
+            engineLabel.textContent = engine.name;
+            const icon = document.createElement('img');
+            promises.push(
+              (async () => {
+                icon.setAttribute('src', await engine.originalEngine.getIconURL());
+              })()
+            );
+            icon.setAttribute('width', '32');
+            icon.setAttribute('height', '32');
+            icon.setAttribute('class', 'engine-icon');
+            label.appendChild(icon);
+            label.appendChild(engineLabel);
+            content.appendChild(label);
+            label.addEventListener('click', async () => {
+              const selectedEngine = engineStore.getEngineByName(engine.name);
+              if (selectedEngine) {
+                await engineStore.setDefaultEngine(selectedEngine);
+              }
+            });
+          });
+          await Promise.all(promises);
+        },
+        async fadeOut() {
+          document.getElementById('zen-welcome-page-content').removeAttribute('select-engine');
         },
       },
       {
@@ -328,47 +546,47 @@
                   <html:div></html:div>
                 </hbox>
                 <html:div id="zen-welcome-initial-essentials-browser-sidebar-essentials">
-                  <html:div class="tabbrowser-tab" fadein="" data-url="https://web.whatsapp.com" style="--zen-tab-icon: url('https://web.whatsapp.com/favicon.ico');">
+                  <html:div class="tabbrowser-tab" fadein="" data-url="https://obsidian.md" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/obsidian.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" visuallyselected="" data-url="https://discord.com" style="--zen-tab-icon: url('https://www.google.com/s2/favicons?domain=discord.com');">
+                  <html:div class="tabbrowser-tab" fadein="" visuallyselected="" data-url="https://discord.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/discord.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" data-url="https://trello.com" style="--zen-tab-icon: url('https://trello.com/favicon.ico');">
+                  <html:div class="tabbrowser-tab" fadein="" data-url="https://trello.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/trello.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" data-url="https://slack.com/" style="--zen-tab-icon: url('https://a.slack-edge.com/80588/marketing/img/meta/favicon-32.png');">
+                  <html:div class="tabbrowser-tab" fadein="" data-url="https://slack.com/" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/slack.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" data-url="https://github.com" style="--zen-tab-icon: url('https://github.githubassets.com/favicons/favicon-dark.png');">
+                  <html:div class="tabbrowser-tab" fadein="" visuallyselected="" data-url="https://github.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/github.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" data-url="https://twitter.com" style="--zen-tab-icon: url('https://abs.twimg.com/favicons/twitter.ico');">
+                  <html:div class="tabbrowser-tab" fadein="" data-url="https://twitter.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/x.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" visuallyselected="" data-url="https://notion.com" style="--zen-tab-icon: url('https://www.notion.so/front-static/favicon.ico');">
+                  <html:div class="tabbrowser-tab" fadein="" visuallyselected="" data-url="https://notion.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/notion.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" visuallyselected="" data-url="https://calendar.google.com" style="--zen-tab-icon: url('https://calendar.google.com/googlecalendar/images/favicons_2020q4/calendar_6.ico');">
+                  <html:div class="tabbrowser-tab" fadein="" data-url="https://calendar.google.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/calendar.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
                   </html:div>
-                  <html:div class="tabbrowser-tab" fadein="" data-url="https://youtube.com" style="--zen-tab-icon: url('https://www.youtube.com/favicon.ico');">
+                  <html:div class="tabbrowser-tab" fadein="" data-url="https://figma.com" style="--zen-essential-tab-icon: url('chrome://browser/content/zen-images/favicons/figma.ico');">
                     <stack class="tab-stack">
                       <html:div class="tab-background"></html:div>
                     </stack>
@@ -391,18 +609,39 @@
               tab.toggleAttribute('visuallyselected');
             });
         },
-        fadeOut() {
+        async fadeOut() {
           const selectedTabs = document
             .getElementById('zen-welcome-initial-essentials-browser-sidebar-essentials')
             .querySelectorAll('.tabbrowser-tab[visuallyselected]');
+
+          if (selectedTabs.length) {
+            await PlacesUtils.history.insertMany(
+              [...selectedTabs].map((tab) => ({
+                url: tab.getAttribute('data-url'),
+                visits: [
+                  {
+                    transition: PlacesUtils.history.TRANSITIONS.TYPED,
+                  },
+                ],
+              }))
+            );
+          }
+
           for (const tab of selectedTabs) {
             const url = tab.getAttribute('data-url');
             const createdTab = window.gBrowser.addTrustedTab(url, {
               inBackground: true,
+              createLazyBrowser: true,
             });
+            let essentialIconUrl = tab.style.getPropertyValue('--zen-essential-tab-icon');
+            // Remove url() from the icon URL
+            essentialIconUrl = essentialIconUrl.replace(/url\(['"]?/, '').replace(/['"]?\)/, '');
+            essentialIconUrl = await getIconData(essentialIconUrl);
+            await setCachedFaviconForURL(url, essentialIconUrl);
+            gBrowser.setIcon(createdTab, essentialIconUrl);
             _tabsToPinEssentials.push(createdTab);
           }
-          openInitialPinTab();
+          await openInitialPinTab();
         },
       },
       {
@@ -493,17 +732,6 @@
       }
     );
     const button = document.getElementById('zen-welcome-start-button');
-    await animate(
-      button,
-      { opacity: [0, 1], y: [20, 0], filter: ['blur(2px)', 'blur(0px)'] },
-      {
-        delay: 0.1,
-        type: 'spring',
-        stiffness: 300,
-        damping: 20,
-        mass: 1.8,
-      }
-    );
     button.addEventListener('click', async () => {
       await animate(
         '#zen-welcome-title span, #zen-welcome-start-button',
@@ -515,8 +743,19 @@
           delay: getMotion().stagger(0.4),
         }
       );
-      new ZenWelcomePages(getWelcomePages());
+      new nsZenWelcomePages(getWelcomePages());
     });
+    await animate(
+      button,
+      { opacity: [0, 1], y: [20, 0], filter: ['blur(2px)', 'blur(0px)'] },
+      {
+        delay: 0.1,
+        type: 'spring',
+        stiffness: 300,
+        damping: 20,
+        mass: 1.8,
+      }
+    );
   }
 
   function centerWindowOnScreen() {
@@ -525,7 +764,9 @@
       function () {
         window.resizeTo(875, 560);
         window.focus();
-        const appWin = window.docShell.treeOwner.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIAppWindow);
+        const appWin = window.docShell.treeOwner
+          .QueryInterface(Ci.nsIInterfaceRequestor)
+          .getInterface(Ci.nsIAppWindow);
         appWin.rollupAllPopups();
         window.moveTo(
           screen.availLeft + (screen.availWidth - outerWidth) / 2,

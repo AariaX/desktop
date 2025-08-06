@@ -1,3 +1,6 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 /**
  * NOTE: Do not modify this file by hand.
  * Content was generated from source XPCOM .idl files.
@@ -52,7 +55,11 @@ declare global {
     setBadgeImage(aBadgeImage: imgIContainer, aPaintContext?: nsISVGPaintContext): void;
     readonly isAppInDock: boolean;
     ensureAppIsPinnedToDock(aAppPath?: string, aAppToReplacePath?: string): boolean;
-    launchAppBundle(aAppBundle: nsIFile, aArgs: string[], aLaunchOptions?: nsIAppBundleLaunchOptions): void;
+    launchAppBundle(
+      aAppBundle: nsIFile,
+      aArgs: string[],
+      aLaunchOptions?: nsIAppBundleLaunchOptions
+    ): void;
   }
 
   // https://searchfox.org/mozilla-central/source/widget/nsIMacFinderProgress.idl

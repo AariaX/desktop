@@ -1,3 +1,6 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 /**
  * NOTE: Do not modify this file by hand.
  * Content was generated from source XPCOM .idl files.
@@ -31,7 +34,11 @@ declare global {
   // https://searchfox.org/mozilla-central/source/toolkit/components/aboutwindowsmessages/nsIAboutWindowsMessages.idl
 
   interface nsIAboutWindowsMessages extends nsISupports {
-    getMessages(currentWindow: mozIDOMWindowProxy, messages: OutParam<string[][]>, windowTitles: OutParam<string[]>): void;
+    getMessages(
+      currentWindow: mozIDOMWindowProxy,
+      messages: OutParam<string[][]>,
+      windowTitles: OutParam<string[]>
+    ): void;
   }
 
   // https://searchfox.org/mozilla-central/source/toolkit/components/alerts/nsIWindowsAlertsService.idl
@@ -48,7 +55,9 @@ declare global {
     type ImagePlacement = nsIWindowsAlertNotification_ImagePlacement;
   }
 
-  interface nsIWindowsAlertNotification extends nsIAlertNotification, Enums<typeof nsIWindowsAlertNotification_ImagePlacement> {
+  interface nsIWindowsAlertNotification
+    extends nsIAlertNotification,
+      Enums<typeof nsIWindowsAlertNotification_ImagePlacement> {
     imagePlacement: nsIWindowsAlertNotification.ImagePlacement;
   }
 
@@ -157,7 +166,12 @@ declare global {
   // https://searchfox.org/mozilla-central/source/toolkit/components/taskscheduler/nsIWinTaskSchedulerService.idl
 
   interface nsIWinTaskSchedulerService extends nsISupports {
-    registerTask(aFolderName: string, aTaskName: string, aDefinitionXML: string, aUpdateExisting?: boolean): void;
+    registerTask(
+      aFolderName: string,
+      aTaskName: string,
+      aDefinitionXML: string,
+      aUpdateExisting?: boolean
+    ): void;
     validateTaskDefinition(aDefinitionXML: string): i32;
     getTaskXML(aFolderName: string, aTaskName: string): string;
     getCurrentUserSid(): string;
@@ -174,7 +188,11 @@ declare global {
     obtainAndCacheFaviconAsync(faviconURL: nsIURI): Promise<any>;
     isAvailable(): Promise<any>;
     checkForRemovals(): Promise<any>;
-    populateJumpList(aTaskDescriptions: any, aCustomTitle: string, aCustomDescriptions: any): Promise<any>;
+    populateJumpList(
+      aTaskDescriptions: any,
+      aCustomTitle: string,
+      aCustomDescriptions: any
+    ): Promise<any>;
     clearJumpList(): Promise<any>;
   }
 
@@ -183,7 +201,11 @@ declare global {
   // https://searchfox.org/mozilla-central/source/widget/nsITaskbarOverlayIconController.idl
 
   interface nsITaskbarOverlayIconController extends nsISupports {
-    setOverlayIcon(statusIcon: imgIContainer, statusDescription: string, paintContext?: nsISVGPaintContext): void;
+    setOverlayIcon(
+      statusIcon: imgIContainer,
+      statusDescription: string,
+      paintContext?: nsISVGPaintContext
+    ): void;
   }
 
   // https://searchfox.org/mozilla-central/source/widget/nsITaskbarPreview.idl
@@ -259,7 +281,10 @@ declare global {
     readonly available: boolean;
     readonly defaultGroupId: string;
     readonly defaultPrivateGroupId: string;
-    createTaskbarTabPreview(shell: nsIDocShell, controller: nsITaskbarPreviewController): nsITaskbarTabPreview;
+    createTaskbarTabPreview(
+      shell: nsIDocShell,
+      controller: nsITaskbarPreviewController
+    ): nsITaskbarTabPreview;
     getTaskbarWindowPreview(shell: nsIDocShell): nsITaskbarWindowPreview;
     getTaskbarProgress(shell: nsIDocShell): nsITaskbarProgress;
     getOverlayIconController(shell: nsIDocShell): nsITaskbarOverlayIconController;
@@ -273,7 +298,11 @@ declare global {
   interface nsIWindowsUIUtils extends nsISupports {
     readonly systemSmallIconSize: i32;
     readonly systemLargeIconSize: i32;
-    setWindowIcon(aWindow: mozIDOMWindowProxy, aSmallIcon: imgIContainer, aLargeIcon: imgIContainer): void;
+    setWindowIcon(
+      aWindow: mozIDOMWindowProxy,
+      aSmallIcon: imgIContainer,
+      aLargeIcon: imgIContainer
+    ): void;
     setWindowIconFromExe(aWindow: mozIDOMWindowProxy, aExe: string, aIndex: u16): void;
     setWindowIconNoData(aWindow: mozIDOMWindowProxy): void;
     readonly inWin10TabletMode: boolean;
@@ -346,13 +375,19 @@ declare global {
     nsIInstalledApplication: nsJSIID<nsIInstalledApplication>;
     nsIAboutThirdParty: nsJSIID<nsIAboutThirdParty>;
     nsIAboutWindowsMessages: nsJSIID<nsIAboutWindowsMessages>;
-    nsIWindowsAlertNotification: nsJSIID<nsIWindowsAlertNotification, typeof nsIWindowsAlertNotification_ImagePlacement>;
+    nsIWindowsAlertNotification: nsJSIID<
+      nsIWindowsAlertNotification,
+      typeof nsIWindowsAlertNotification_ImagePlacement
+    >;
     nsIWindowsAlertsService: nsJSIID<nsIWindowsAlertsService>;
     nsIDefaultAgent: nsJSIID<nsIDefaultAgent>;
     nsIWindowsMutex: nsJSIID<nsIWindowsMutex>;
     nsIWindowsMutexFactory: nsJSIID<nsIWindowsMutexFactory>;
     nsIGeolocationUIUtilsWin: nsJSIID<nsIGeolocationUIUtilsWin>;
-    nsIWindowsShellService: nsJSIID<nsIWindowsShellService, typeof nsIWindowsShellService_LaunchOnLoginEnabledEnumerator>;
+    nsIWindowsShellService: nsJSIID<
+      nsIWindowsShellService,
+      typeof nsIWindowsShellService_LaunchOnLoginEnabledEnumerator
+    >;
     nsIWinTaskSchedulerService: nsJSIID<nsIWinTaskSchedulerService>;
     nsIJumpListBuilder: nsJSIID<nsIJumpListBuilder>;
     nsITaskbarOverlayIconController: nsJSIID<nsITaskbarOverlayIconController>;

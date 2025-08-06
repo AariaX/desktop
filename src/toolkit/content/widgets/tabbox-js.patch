@@ -1,5 +1,5 @@
 diff --git a/toolkit/content/widgets/tabbox.js b/toolkit/content/widgets/tabbox.js
-index 6775a7635c6cdbb276b3a912d0bba07840acb28f..fc5d3b1fab286c657c27b98d56bb616dfab3caef 100644
+index 70afbfc87d543971e6f8a0661a44b682920a7bc4..2f767296db8043318fab2aeb39bfc5eee090b258 100644
 --- a/toolkit/content/widgets/tabbox.js
 +++ b/toolkit/content/widgets/tabbox.js
 @@ -213,7 +213,7 @@
@@ -7,7 +7,7 @@ index 6775a7635c6cdbb276b3a912d0bba07840acb28f..fc5d3b1fab286c657c27b98d56bb616d
        this._inAsyncOperation = false;
        if (oldPanel != this._selectedPanel) {
 -        oldPanel?.classList.remove("deck-selected");
-+        if (!oldPanel?.classList.contains("zen-glance-background")) oldPanel?.classList.remove("deck-selected");
++        if (!(window.gZenGlanceManager && gZenGlanceManager.shouldShowDeckSelected(this._selectedPanel, oldPanel))) oldPanel?.classList.remove("deck-selected");
          this._selectedPanel?.classList.add("deck-selected");
        }
        this.setAttribute("selectedIndex", val);
@@ -16,7 +16,7 @@ index 6775a7635c6cdbb276b3a912d0bba07840acb28f..fc5d3b1fab286c657c27b98d56bb616d
          return;
        }
 -      for (let otherTab of this.allTabs) {
-+      for (let otherTab of window.ZenWorkspaces?.allStoredTabs ?? this.allTabs) {
++      for (let otherTab of window.gZenWorkspaces?.allStoredTabs ?? this.allTabs) {
          if (otherTab != tab && otherTab.selected) {
            otherTab._selected = false;
          }

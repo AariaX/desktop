@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import json
 import os
 import sys
@@ -38,7 +42,7 @@ def get_rc_response() -> Optional[str]:
     for tag_dict in data["tags"]:
       tag = tag_dict["tag"]
       if (tag.startswith("FIREFOX") and tag.endswith("_BUILD1")
-              and "ESR" not in tag and "b" not in tag):
+              and "ESR" not in tag and "b" not in tag and "ANDROID" not in tag):
         return (tag.replace("FIREFOX_", "").replace("_BUILD1",
                                                     "").replace("_", "."))
   except (FileNotFoundError, json.JSONDecodeError) as e:

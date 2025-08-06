@@ -34,9 +34,18 @@
   margin-left: 0 !important;
   position: absolute !important;
   overflow: hidden;
+
+  & .dialogStack {
+    /* Fix for issue https://github.com/zen-browser/desktop/issues/7564 */
+    position: absolute;
+  }
 }
 
-#tabbrowser-tabpanels[zen-split-view='true']:not([zen-split-resizing]) > [zen-split-anim='true'] {
+#zen-splitview-dropzone {
+  margin-top: 0 !important;
+}
+
+#tabbrowser-tabpanels[zen-split-view='true']:not([zen-split-resizing]) > [zen-split='true'] {
   transition: inset 0.09s ease-out !important;
   & browser {
     transition: opacity 0.2s ease-out !important;
@@ -51,10 +60,11 @@
   &.zen-glance-overlay {
     flex: 1;
     margin-top: calc(var(--zen-element-separation) / 2);
+    z-index: 1;
   }
 }
 
-#tabbrowser-tabbox:has(#tabbrowser-tabpanels[zen-split-view='true']) {
+#tabbrowser-tabbox[zen-split-view='true'] {
   :root[zen-no-padding='true'] & {
     --zen-element-separation: 8px;
   }
@@ -64,15 +74,8 @@
   margin-right: calc(-1 * var(--zen-split-column-gap));
 }
 
-#tabbrowser-tabpanels:has(> [zen-split='true']),
-#zen-splitview-overlay {
-  :root:not([zen-compact-mode='true']):not([customizing]) & {
-    @media -moz-pref('zen.view.compact.hide-toolbar') {
-      & {
-        margin-top: calc(var(--zen-split-column-gap) * -1);
-      }
-    }
-  }
+:root:not([customizing]) #zen-splitview-overlay {
+  margin-top: calc(var(--zen-split-column-gap) * -1);
 }
 
 #tabbrowser-tabpanels[zen-split-view] {
@@ -106,10 +109,6 @@
   cursor: ns-resize;
 }
 
-#zen-split-views-box:not([hidden='true']) {
-  display: flex !important;
-}
-
 .zen-view-splitter-header-container {
   position: absolute;
   top: calc(var(--zen-split-column-gap) / -2);
@@ -125,8 +124,8 @@
   display: flex;
   align-items: center;
   position: fixed;
-  padding: 0.4rem 0.6rem;
-  border-radius: 8px;
+  padding: 0.4rem 0.6rem 0.2rem 0.6rem;
+  border-radius: var(--zen-native-content-radius);
   background-color: light-dark(rgba(255, 255, 255, 1), rgba(0, 0, 0, 1));
   box-shadow: 0 0 0 1px var(--button-primary-border-color);
   gap: 0.8rem;
@@ -136,7 +135,9 @@
   border-top-right-radius: 0;
 }
 
-:root:not([inDOMFullscreen='true']) .browserSidebarContainer:hover .zen-view-splitter-header-container,
+:root:not([inDOMFullscreen='true'])
+  .browserSidebarContainer:hover
+  .zen-view-splitter-header-container,
 .zen-view-splitter-header-container:hover {
   pointer-events: all;
   opacity: 1;
@@ -144,7 +145,7 @@
 }
 
 .zen-view-splitter-header-container toolbarbutton {
-  display: block;
+  display: flex;
   -moz-context-properties: fill, fill-opacity;
   border-radius: var(--tab-border-radius);
   color: inherit;
@@ -161,6 +162,11 @@
   & image {
     width: 14px;
     height: 14px;
+  }
+
+  &.zen-tab-unsplit-button image {
+    height: 10px;
+    width: 10px;
   }
 
   &.zen-tab-rearrange-button {

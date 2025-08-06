@@ -1,17 +1,37 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 {
-  var ZenStartup = {
-    init() {
+  var gZenStartup = {
+    _watermarkIgnoreElements: ['zen-toast-container'],
+
+    isReady: false,
+
+    async init() {
+      // important: We do this to ensure that some firefox components
+      // are initialized before we start our own initialization.
+      // please, do not remove this line and if you do, make sure to
+      // test the startup process.
+      await new Promise((resolve) => resolve());
       this.openWatermark();
+      this._initBrowserBackground();
       this._changeSidebarLocation();
       this._zenInitBrowserLayout();
-      this._initSearchBar();
+    },
+
+    _initBrowserBackground() {
+      const background = document.createXULElement('box');
+      background.id = 'zen-browser-background';
+      const grain = document.createXULElement('box');
+      grain.id = 'zen-browser-grain';
+      background.appendChild(grain);
+      document.getElementById('browser').prepend(background);
     },
 
     _zenInitBrowserLayout() {
       if (this.__hasInitBrowserLayout) return;
       this.__hasInitBrowserLayout = true;
       try {
-        console.info('ZenThemeModifier: init browser layout');
         const kNavbarItems = ['nav-bar', 'PersonalToolbar'];
         const kNewContainerId = 'zen-appcontent-navbar-container';
         let newContainer = document.getElementById(kNewContainerId);
@@ -25,19 +45,19 @@
         // Fix notification deck
         const deckTemplate = document.getElementById('tab-notification-deck-template');
         if (deckTemplate) {
-          document.getElementById('zen-appcontent-navbar-container').appendChild(deckTemplate);
+          document.getElementById('zen-appcontent-wrapper').prepend(deckTemplate);
         }
 
-        this._initSidebarScrolling();
-        this._hideUnusedElements();
+        gZenWorkspaces.init();
+        setTimeout(() => {
+          gZenUIManager.init();
+          this._checkForWelcomePage();
 
-        ZenWorkspaces.init();
-        gZenVerticalTabsManager.init();
-        gZenUIManager.init();
-
-        this._checkForWelcomePage();
-
-        document.l10n.setAttributes(document.getElementById('tabs-newtab-button'), 'tabs-toolbar-new-tab');
+          document.l10n.setAttributes(
+            document.getElementById('tabs-newtab-button'),
+            'tabs-toolbar-new-tab'
+          );
+        }, 0);
       } catch (e) {
         console.error('ZenThemeModifier: Error initializing browser layout', e);
       }
@@ -58,23 +78,21 @@
     },
 
     delayedStartupFinished() {
-      ZenWorkspaces.promiseInitialized.then(async () => {
+      gZenWorkspaces.promiseInitialized.then(async () => {
         await delayedStartupPromise;
         await SessionStore.promiseAllWindowsRestored;
-        setTimeout(() => {
-          gZenCompactModeManager.init();
-          setTimeout(() => {
-            // A bit of a hack to make sure the tabs toolbar is updated.
-            // Just in case we didn't get the right size.
-            gZenUIManager.updateTabsToolbar();
-
-            // Fix for https://github.com/zen-browser/desktop/issues/7605, specially in compact mode
-            if (gURLBar.hasAttribute('breakout-extend')) {
-              gURLBar.focus();
-            }
-          }, 100);
-        }, 0);
+        delete gZenUIManager.promiseInitialized;
+        this._initSearchBar();
+        gZenCompactModeManager.init();
+        // Fix for https://github.com/zen-browser/desktop/issues/7605, specially in compact mode
+        if (gURLBar.hasAttribute('breakout-extend')) {
+          gURLBar.focus();
+        }
+        // A bit of a hack to make sure the tabs toolbar is updated.
+        // Just in case we didn't get the right size.
+        gZenUIManager.updateTabsToolbar();
         this.closeWatermark();
+        this.isReady = true;
       });
     },
 
@@ -91,19 +109,21 @@
     closeWatermark() {
       document.documentElement.removeAttribute('zen-before-loaded');
       if (Services.prefs.getBoolPref('zen.watermark.enabled', false)) {
+        let elementsToIgnore = this._watermarkIgnoreElements.map((id) => '#' + id).join(', ');
         gZenUIManager.motion
           .animate(
-            '#browser > *, #urlbar, #tabbrowser-tabbox > *',
+            '#browser > *:not(' + elementsToIgnore + '), #urlbar, #tabbrowser-tabbox > *',
             {
               opacity: [0, 1],
             },
             {
-              delay: 0.6,
-              easing: 'ease-in-out',
+              duration: 0.1,
             }
           )
           .then(() => {
-            for (let elem of document.querySelectorAll('#browser > *, #urlbar, #tabbrowser-tabbox > *')) {
+            for (let elem of document.querySelectorAll(
+              '#browser > *, #urlbar, #tabbrowser-tabbox > *'
+            )) {
               elem.style.removeProperty('opacity');
             }
           });
@@ -128,61 +148,27 @@
       }
     },
 
-    _hideUnusedElements() {
-      const kElements = ['firefox-view-button'];
-      for (let id of kElements) {
-        const elem = document.getElementById(id);
-        if (elem) {
-          elem.setAttribute('hidden', 'true');
-        }
-      }
-    },
-
-    _initSidebarScrolling() {
-      // Disable smooth scroll
-      const canSmoothScroll = Services.prefs.getBoolPref('zen.startup.smooth-scroll-in-tabs', false);
-      const tabsWrapper = document.getElementById('zen-tabs-wrapper');
-      gBrowser.tabContainer.addEventListener('wheel', (event) => {
-        if (canSmoothScroll) return;
-        event.preventDefault(); // Prevent the smooth scroll behavior
-        gBrowser.tabContainer.scrollTop += event.deltaY * 20; // Apply immediate scroll
-      });
-      // Detect overflow and underflow
-      const observer = new ResizeObserver((_) => {
-        const tabContainer = gBrowser.tabContainer;
-        // const isVertical = tabContainer.getAttribute('orient') === 'vertical';
-        // let contentSize = tabsWrapper.getBoundingClientRect()[isVertical ? 'height' : 'width'];
-        // NOTE: This should be contentSize > scrollClientSize, but due
-        // to how Gecko internally rounds in those cases, we allow for some
-        // minor differences (the internal Gecko layout size is 1/60th of a
-        // pixel, so 0.02 should cover it).
-        //let overflowing = contentSize - tabContainer.arrowScrollbox.scrollClientSize > 0.02;
-        let overflowing = true; // cheatign the system, because we want to always show make the element overflowing
-
-        window.requestAnimationFrame(() => {
-          tabContainer.arrowScrollbox.toggleAttribute('overflowing', overflowing);
-          tabContainer.arrowScrollbox.dispatchEvent(new CustomEvent(overflowing ? 'overflow' : 'underflow'));
-        });
-      });
-      observer.observe(tabsWrapper);
-    },
-
     _initSearchBar() {
       // Only focus the url bar
       gURLBar.focus();
-
-      gURLBar._initCopyCutController();
-      gURLBar._initPasteAndGo();
-      gURLBar._initStripOnShare();
     },
 
     _checkForWelcomePage() {
       if (!Services.prefs.getBoolPref('zen.welcome-screen.seen', false)) {
         Services.prefs.setBoolPref('zen.welcome-screen.seen', true);
-        Services.scriptloader.loadSubScript('chrome://browser/content/zen-components/ZenWelcome.mjs', window);
+        Services.scriptloader.loadSubScript(
+          'chrome://browser/content/zen-components/ZenWelcome.mjs',
+          window
+        );
       }
     },
   };
 
-  ZenStartup.init();
+  window.addEventListener(
+    'MozBeforeInitialXULLayout',
+    () => {
+      gZenStartup.init();
+    },
+    { once: true }
+  );
 }

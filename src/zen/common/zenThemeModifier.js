@@ -10,7 +10,11 @@
  * FOR ANY WEBSITE THAT WOULD NEED TO USE THE ACCENT COLOR, ETC
  */
 
-const kZenThemePrefsList = ['zen.theme.accent-color', 'zen.theme.border-radius', 'zen.theme.content-element-separation'];
+const kZenThemePrefsList = [
+  'zen.theme.accent-color',
+  'zen.theme.border-radius',
+  'zen.theme.content-element-separation',
+];
 const kZenMaxElementSeparation = 12;
 
 /**
@@ -19,7 +23,7 @@ const kZenMaxElementSeparation = 12;
  * because we need a way to apply the accent color without having to worry about
  * shadow roots not inheriting the accent color.
  *
- * note: It must be a firefox builtin page with access to the browser's configuration
+ * note: It must be a Firefox builtin page with access to the browser's configuration
  *  and services.
  */
 var ZenThemeModifier = {
@@ -42,14 +46,18 @@ var ZenThemeModifier = {
       Services.prefs.addObserver(pref, handleEvent);
     }
 
-    window.addEventListener('unload', () => {
-      for (let pref of kZenThemePrefsList) {
-        Services.prefs.removeObserver(pref, handleEvent);
-      }
-    });
+    window.addEventListener(
+      'unload',
+      () => {
+        for (let pref of kZenThemePrefsList) {
+          Services.prefs.removeObserver(pref, handleEvent);
+        }
+      },
+      { once: true }
+    );
   },
 
-  handleEvent(event) {
+  handleEvent() {
     // note: even might be undefined, but we shoudnt use it!
     this.updateAllThemeBasics();
   },
@@ -79,7 +87,10 @@ var ZenThemeModifier = {
   },
 
   get elementSeparation() {
-    return Math.min(Services.prefs.getIntPref('zen.theme.content-element-separation'), kZenMaxElementSeparation);
+    return Math.min(
+      Services.prefs.getIntPref('zen.theme.content-element-separation'),
+      kZenMaxElementSeparation
+    );
   },
 
   /**
@@ -88,11 +99,6 @@ var ZenThemeModifier = {
   updateAccentColor() {
     const accentColor = Services.prefs.getStringPref('zen.theme.accent-color');
     document.documentElement.style.setProperty('--zen-primary-color', accentColor);
-    // Notify the page that the accent color has changed, only if a function
-    // handler is defined.
-    if (typeof window.zenPageAccentColorChanged === 'function') {
-      window.zenPageAccentColorChanged(accentColor);
-    }
   },
 };
 

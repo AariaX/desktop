@@ -1,3 +1,6 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 /**
  * Gecko generic/specialized adjustments for xpcom and webidl types.
  */
@@ -30,8 +33,14 @@ type nsIGleanPingWithReason<T> = {
 
 interface MessageListenerManagerMixin {
   // Overloads that define `data` arg as required, since it's ~always expected.
-  addMessageListener(msg: string, listener: { receiveMessage(_: ReceiveMessageArgument & { data }) });
-  removeMessageListener(msg: string, listener: { receiveMessage(_: ReceiveMessageArgument & { data }) });
+  addMessageListener(
+    msg: string,
+    listener: { receiveMessage(_: ReceiveMessageArgument & { data }) }
+  );
+  removeMessageListener(
+    msg: string,
+    listener: { receiveMessage(_: ReceiveMessageArgument & { data }) }
+  );
 }
 
 interface MozQueryInterface {
@@ -71,7 +80,12 @@ interface ComponentsExceptionOptions {
 interface nsIException extends Exception {}
 
 interface nsIXPCComponents_Exception {
-  (message?: string, resultOrOptions?: number | ComponentsExceptionOptions, stack?: nsIStackFrame, data?: object): nsIException;
+  (
+    message?: string,
+    resultOrOptions?: number | ComponentsExceptionOptions,
+    stack?: nsIStackFrame,
+    data?: object
+  ): nsIException;
 }
 
 interface nsIXPCComponents_ID {

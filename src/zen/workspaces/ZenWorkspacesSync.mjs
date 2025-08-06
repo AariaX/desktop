@@ -2,10 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-var { Tracker, Store, SyncEngine } = ChromeUtils.importESModule('resource://services-sync/engines.sys.mjs');
+var { Tracker, Store, SyncEngine } = ChromeUtils.importESModule(
+  'resource://services-sync/engines.sys.mjs'
+);
 var { CryptoWrapper } = ChromeUtils.importESModule('resource://services-sync/record.sys.mjs');
 var { Utils } = ChromeUtils.importESModule('resource://services-sync/util.sys.mjs');
-var { SCORE_INCREMENT_XLARGE } = ChromeUtils.importESModule('resource://services-sync/constants.sys.mjs');
+var { SCORE_INCREMENT_XLARGE } = ChromeUtils.importESModule(
+  'resource://services-sync/constants.sys.mjs'
+);
 
 // Define ZenWorkspaceRecord
 function ZenWorkspaceRecord(collection, id) {
@@ -242,7 +246,9 @@ ZenWorkspacesStore.prototype._validateRecord = function (record) {
     try {
       JSON.parse(record.theme_colors);
     } catch (e) {
-      throw new Error(`Invalid theme_colors JSON for workspace ID ${record.id}`);
+      throw new Error(
+        `Invalid theme_colors JSON for workspace ID ${record.id}. Error: ${e.message}`
+      );
     }
     if (record.theme_opacity != null && typeof record.theme_opacity !== 'number') {
       throw new Error(`Invalid theme_opacity for workspace ID ${record.id}`);
@@ -386,7 +392,7 @@ ZenWorkspacesTracker.prototype.observe = async function (subject, topic, data) {
         break;
       case 'zen-workspace-removed':
       case 'zen-workspace-updated':
-      case 'zen-workspace-added':
+      case 'zen-workspace-added': {
         let workspaceIDs;
         if (data) {
           try {
@@ -420,6 +426,7 @@ ZenWorkspacesTracker.prototype.observe = async function (subject, topic, data) {
           this.score += SCORE_INCREMENT_XLARGE;
         }
         break;
+      }
     }
   } catch (error) {
     this._log.error(`Error handling ${topic} in observe method`, error);

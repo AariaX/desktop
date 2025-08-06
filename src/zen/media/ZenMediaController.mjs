@@ -1,3 +1,6 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 {
   const lazy = {};
   XPCOMUtils.defineLazyPreferenceGetter(
@@ -7,7 +10,7 @@
     true
   );
 
-  class ZenMediaController {
+  class nsZenMediaController {
     _currentMediaController = null;
     _currentBrowser = null;
     _mediaUpdateInterval = null;
@@ -152,11 +155,21 @@
       }
 
       if (linkedBrowser?.browsingContext?.mediaController) {
-        this.deinitMediaController(linkedBrowser.browsingContext.mediaController, true, isCurrentBrowser, true);
+        this.deinitMediaController(
+          linkedBrowser.browsingContext.mediaController,
+          true,
+          isCurrentBrowser,
+          true
+        );
       }
     }
 
-    async deinitMediaController(mediaController, shouldForget = true, shouldOverride = true, shouldHide = true) {
+    async deinitMediaController(
+      mediaController,
+      shouldForget = true,
+      shouldOverride = true,
+      shouldHide = true
+    ) {
       if (shouldForget && mediaController) {
         mediaController.removeEventListener('pictureinpicturemodechange', this.onPipModeChange);
         mediaController.removeEventListener('positionstatechange', this.onPositionstateChange);
@@ -221,7 +234,6 @@
           this.mediaControlBar.setAttribute('hidden', 'true');
           this.mediaControlBar.removeAttribute('media-sharing');
           gZenUIManager.updateTabsToolbar();
-          gZenUIManager.restoreScrollbarState();
         });
     }
 
@@ -230,7 +242,8 @@
 
       if (!this.isSharing) {
         if (!this._currentMediaController) return;
-        if (this._currentMediaController.isBeingUsedInPIPModeOrFullscreen) return this.hideMediaControls();
+        if (this._currentMediaController.isBeingUsedInPIPModeOrFullscreen)
+          return this.hideMediaControls();
 
         this.updatePipButton();
       }
@@ -246,7 +259,6 @@
           this.mediaControlBar.querySelector('toolbaritem').getBoundingClientRect().height + 'px';
         this.mediaControlBar.style.opacity = 0;
         gZenUIManager.updateTabsToolbar();
-        gZenUIManager.restoreScrollbarState();
         gZenUIManager.motion.animate(
           this.mediaControlBar,
           {
@@ -280,18 +292,21 @@
     setupMediaControlUI(metadata, positionState) {
       this.updatePipButton();
 
-      if (!this.mediaControlBar.classList.contains('playing') && this._currentMediaController.isPlaying) {
+      if (
+        !this.mediaControlBar.classList.contains('playing') &&
+        this._currentMediaController.isPlaying
+      ) {
         this.mediaControlBar.classList.add('playing');
       }
 
-      const iconURL = this._currentBrowser.mIconURL || `page-icon:${this._currentBrowser.currentURI.spec}`;
+      const iconURL =
+        this._currentBrowser.mIconURL || `page-icon:${this._currentBrowser.currentURI.spec}`;
       this.mediaFocusButton.style.listStyleImage = `url(${iconURL})`;
 
       this.mediaTitle.textContent = metadata.title || '';
       this.mediaArtist.textContent = metadata.artist || '';
 
       gZenUIManager.updateTabsToolbar();
-      gZenUIManager.restoreScrollbarState();
 
       this._currentPosition = positionState.position;
       this._currentDuration = positionState.duration;
@@ -309,7 +324,8 @@
       this.updateMuteState();
       this.switchController();
 
-      if (!mediaController.isActive || this._currentBrowser?.browserId === browser.browserId) return;
+      if (!mediaController.isActive || this._currentBrowser?.browserId === browser.browserId)
+        return;
 
       const metadata = mediaController.getMetadata();
       const positionState = mediaController.getPositionState();
@@ -385,7 +401,12 @@
     }
 
     _onDeactivated(event) {
-      this.deinitMediaController(event.target, true, event.target.id === this._currentMediaController.id, true);
+      this.deinitMediaController(
+        event.target,
+        true,
+        event.target.id === this._currentMediaController.id,
+        true
+      );
       this.switchController();
     }
 
@@ -455,7 +476,8 @@
               const elapsedTime = Math.floor((Date.now() - nextController.lastUpdated) / 1000);
 
               this.setupMediaControlUI(nextController.controller.getMetadata(), {
-                position: nextController.position + (nextController.controller.isPlaying ? elapsedTime : 0),
+                position:
+                  nextController.position + (nextController.controller.isPlaying ? elapsedTime : 0),
                 duration: nextController.duration,
                 playbackRate: nextController.playbackRate,
               });
@@ -475,7 +497,8 @@
         this._mediaUpdateInterval = null;
       }
 
-      if (this._currentDuration >= 900_000) return this.mediaControlBar.setAttribute('media-position-hidden', 'true');
+      if (this._currentDuration >= 900_000)
+        return this.mediaControlBar.setAttribute('media-position-hidden', 'true');
       else this.mediaControlBar.removeAttribute('media-position-hidden');
 
       if (!this._currentDuration) return;
@@ -581,17 +604,15 @@
       if (this._currentMediaController) this._currentMediaController.focus();
       else if (this._currentBrowser) {
         const tab = window.gBrowser.getTabForBrowser(this._currentBrowser);
-        if (tab) window.ZenWorkspaces.switchTabIfNeeded(tab);
+        if (tab) window.gZenWorkspaces.switchTabIfNeeded(tab);
       }
     }
 
     onMediaMute() {
-      if (!this.mediaControlBar.hasAttribute('muted')) {
-        this._currentBrowser.mute();
-        this.mediaControlBar.setAttribute('muted', '');
-      } else {
-        this._currentBrowser.unmute();
-        this.mediaControlBar.removeAttribute('muted');
+      const tab = window.gBrowser.getTabForBrowser(this._currentBrowser);
+      if (tab) {
+        tab.toggleMuteAudio();
+        this.updateMuteState();
       }
     }
 
@@ -621,37 +642,47 @@
 
     onMicrophoneMuteToggle() {
       if (this._currentBrowser) {
-        const shouldMute = this.mediaControlBar.hasAttribute('mic-muted') ? 'webrtc:UnmuteMicrophone' : 'webrtc:MuteMicrophone';
+        const shouldMute = this.mediaControlBar.hasAttribute('mic-muted')
+          ? 'webrtc:UnmuteMicrophone'
+          : 'webrtc:MuteMicrophone';
 
-        this._currentBrowser.browsingContext.currentWindowGlobal.getActor('WebRTC').sendAsyncMessage(shouldMute);
+        this._currentBrowser.browsingContext.currentWindowGlobal
+          .getActor('WebRTC')
+          .sendAsyncMessage(shouldMute);
         this.mediaControlBar.toggleAttribute('mic-muted');
       }
     }
 
     onCameraMuteToggle() {
       if (this._currentBrowser) {
-        const shouldMute = this.mediaControlBar.hasAttribute('camera-muted') ? 'webrtc:UnmuteCamera' : 'webrtc:MuteCamera';
+        const shouldMute = this.mediaControlBar.hasAttribute('camera-muted')
+          ? 'webrtc:UnmuteCamera'
+          : 'webrtc:MuteCamera';
 
-        this._currentBrowser.browsingContext.currentWindowGlobal.getActor('WebRTC').sendAsyncMessage(shouldMute);
+        this._currentBrowser.browsingContext.currentWindowGlobal
+          .getActor('WebRTC')
+          .sendAsyncMessage(shouldMute);
         this.mediaControlBar.toggleAttribute('camera-muted');
       }
     }
 
     updateMuteState() {
       if (!this._currentBrowser) return;
-      this.mediaControlBar.toggleAttribute('muted', this._currentBrowser._audioMuted);
+      this.mediaControlBar.toggleAttribute('muted', this._currentBrowser.audioMuted);
     }
 
     updatePipButton() {
       if (!this._currentBrowser) return;
       if (this.isSharing) return;
 
-      const { totalPipCount, totalPipDisabled } = PictureInPicture.getEligiblePipVideoCount(this._currentBrowser);
+      const { totalPipCount, totalPipDisabled } = PictureInPicture.getEligiblePipVideoCount(
+        this._currentBrowser
+      );
       const canPip = totalPipCount === 1 || (totalPipDisabled > 0 && lazy.RESPECT_PIP_DISABLED);
 
       this.mediaControlBar.toggleAttribute('can-pip', canPip);
     }
   }
 
-  window.gZenMediaController = new ZenMediaController();
+  window.gZenMediaController = new nsZenMediaController();
 }

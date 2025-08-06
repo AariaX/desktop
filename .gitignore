@@ -14,3 +14,7 @@ venv/
 win-cross/
 
 !firefox-patches/
+target/
+.vscode/
+
+locales/firefox-l10n/

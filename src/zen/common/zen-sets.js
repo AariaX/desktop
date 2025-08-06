@@ -8,7 +8,7 @@ document.addEventListener(
     // <commandset id="mainCommandSet"> defined in browser-sets.inc
     document
       .getElementById('zenCommandSet')
-      // eslint-disable-next-line complexity
+
       .addEventListener('command', (event) => {
         switch (event.target.id) {
           case 'cmd_zenCompactModeToggle':
@@ -30,10 +30,10 @@ document.addEventListener(
             gZenCompactModeManager.toggleToolbar();
             break;
           case 'cmd_zenWorkspaceForward':
-            ZenWorkspaces.changeWorkspaceShortcut();
+            gZenWorkspaces.changeWorkspaceShortcut();
             break;
           case 'cmd_zenWorkspaceBackward':
-            ZenWorkspaces.changeWorkspaceShortcut(-1);
+            gZenWorkspaces.changeWorkspaceShortcut(-1);
             break;
           case 'cmd_zenSplitViewGrid':
             gZenViewSplitter.toggleShortcut('grid');
@@ -69,7 +69,9 @@ document.addEventListener(
             gZenThemePicker.openThemePicker(event);
             break;
           case 'cmd_zenChangeWorkspaceTab':
-            ZenWorkspaces.changeTabWorkspace(event.sourceEvent.target.getAttribute('zen-workspace-id'));
+            gZenWorkspaces.changeTabWorkspace(
+              event.sourceEvent.target.getAttribute('zen-workspace-id')
+            );
             break;
           case 'cmd_zenToggleTabsOnRight':
             gZenVerticalTabsManager.toggleTabsOnRight();
@@ -80,25 +82,44 @@ document.addEventListener(
           case 'cmd_zenReplacePinnedUrlWithCurrent':
             gZenPinnedTabManager.replacePinnedUrlWithCurrent();
             break;
-          case 'cmd_zenAddToEssentials':
+          case 'cmd_contextZenAddToEssentials':
             gZenPinnedTabManager.addToEssentials();
             break;
-          case 'cmd_zenRemoveFromEssentials':
+          case 'cmd_contextZenRemoveFromEssentials':
             gZenPinnedTabManager.removeEssentials();
             break;
-          case 'cmd_zenUnloadTab':
-            gZenTabUnloader.unloadTab();
+          case 'cmd_zenCtxDeleteWorkspace':
+            gZenWorkspaces.contextDeleteWorkspace(event);
             break;
-          case 'cmd_zenPreventUnloadTab':
-            gZenTabUnloader.preventUnloadTab();
+          case 'cmd_zenChangeWorkspaceName':
+            gZenVerticalTabsManager.renameTabStart({
+              target: gZenWorkspaces.activeWorkspaceIndicator.querySelector(
+                '.zen-current-workspace-indicator-name'
+              ),
+            });
             break;
-          case 'cmd_zenIgnoreUnloadTab':
-            gZenTabUnloader.ignoreUnloadTab();
+          case 'cmd_zenChangeWorkspaceIcon':
+            gZenWorkspaces.changeWorkspaceIcon();
+            break;
+          case 'cmd_zenReorderWorkspaces':
+            gZenUIManager.showToast('zen-workspaces-how-to-reorder-title', {
+              timeout: 9000,
+              descriptionId: 'zen-workspaces-how-to-reorder-desc',
+            });
+            break;
+          case 'cmd_zenOpenWorkspaceCreation':
+            gZenWorkspaces.openWorkspaceCreation(event);
+            break;
+          case 'cmd_zenOpenFolderCreation':
+            gZenFolders.createFolder([], {
+              renameFolder: true,
+            });
             break;
           default:
+            gZenGlanceManager.handleMainCommandSet(event);
             if (event.target.id.startsWith('cmd_zenWorkspaceSwitch')) {
               const index = parseInt(event.target.id.replace('cmd_zenWorkspaceSwitch', ''), 10) - 1;
-              ZenWorkspaces.shortcutSwitchTo(index);
+              gZenWorkspaces.shortcutSwitchTo(index);
             }
             break;
         }

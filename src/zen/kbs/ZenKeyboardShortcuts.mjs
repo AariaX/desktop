@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 const KEYCODE_MAP = {
   F1: 'VK_F1',
   F2: 'VK_F2',
@@ -134,7 +138,7 @@ const VALID_SHORTCUT_GROUPS = [
   'other',
 ];
 
-class KeyShortcutModifiers {
+class nsKeyShortcutModifiers {
   #control = false;
   #alt = false;
   #shift = false;
@@ -157,10 +161,10 @@ class KeyShortcutModifiers {
 
   static parseFromJSON(modifiers) {
     if (!modifiers) {
-      return new KeyShortcutModifiers(false, false, false, false, false);
+      return new nsKeyShortcutModifiers(false, false, false, false, false);
     }
 
-    return new KeyShortcutModifiers(
+    return new nsKeyShortcutModifiers(
       modifiers['control'] == true,
       modifiers['alt'] == true,
       modifiers['shift'] == true,
@@ -171,10 +175,10 @@ class KeyShortcutModifiers {
 
   static parseFromXHTMLAttribute(modifiers) {
     if (!modifiers) {
-      return new KeyShortcutModifiers(false, false, false, false, false);
+      return new nsKeyShortcutModifiers(false, false, false, false, false);
     }
 
-    return new KeyShortcutModifiers(
+    return new nsKeyShortcutModifiers(
       modifiers.includes('control'),
       modifiers.includes('alt'),
       modifiers.includes('shift'),
@@ -185,7 +189,7 @@ class KeyShortcutModifiers {
 
   // used to avoid any future changes to the object
   static fromObject({ ctrl = false, alt = false, shift = false, meta = false, accel = false }) {
-    return new KeyShortcutModifiers(ctrl, alt, shift, meta, accel);
+    return new nsKeyShortcutModifiers(ctrl, alt, shift, meta, accel);
   }
 
   toUserString() {
@@ -218,9 +222,11 @@ class KeyShortcutModifiers {
       this.#shift == other.#shift &&
       this.#control == other.#control &&
       (AppConstants.platform == 'macosx'
-        ? (this.#meta || this.#accel) == (other.#meta || other.#accel) && this.#control == other.#control
+        ? (this.#meta || this.#accel) == (other.#meta || other.#accel) &&
+          this.#control == other.#control
         : // In other platforms, we can have control and accel counting as the same thing
-          this.#meta == other.#meta && (this.#control || this.#accel) == (other.#control || other.#accel))
+          this.#meta == other.#meta &&
+          (this.#control || this.#accel) == (other.#control || other.#accel))
     );
   }
 
@@ -284,14 +290,25 @@ class KeyShortcut {
   #key = '';
   #keycode = '';
   #group = FIREFOX_SHORTCUTS_GROUP;
-  #modifiers = new KeyShortcutModifiers(false, false, false, false, false);
+  #modifiers = new nsKeyShortcutModifiers(false, false, false, false, false);
   #action = '';
   #l10nId = '';
   #disabled = false;
   #reserved = false;
   #internal = false;
 
-  constructor(id, key, keycode, group, modifiers, action, l10nId, disabled = false, reserved = false, internal = false) {
+  constructor(
+    id,
+    key,
+    keycode,
+    group,
+    modifiers,
+    action,
+    l10nId,
+    disabled = false,
+    reserved = false,
+    internal = false
+  ) {
     this.#id = id;
     this.#key = key?.toLowerCase();
     this.#keycode = keycode;
@@ -340,7 +357,7 @@ class KeyShortcut {
       json['key'],
       json['keycode'],
       json['group'],
-      KeyShortcutModifiers.parseFromJSON(json['modifiers']),
+      nsKeyShortcutModifiers.parseFromJSON(json['modifiers']),
       json['action'],
       json['l10nId'],
       json['disabled'],
@@ -355,8 +372,11 @@ class KeyShortcut {
       key.getAttribute('key'),
       key.getAttribute('keycode'),
       group ??
-        KeyShortcut.getGroupFromL10nId(KeyShortcut.sanitizeL10nId(key.getAttribute('data-l10n-id')), key.getAttribute('id')),
-      KeyShortcutModifiers.parseFromXHTMLAttribute(key.getAttribute('modifiers')),
+        KeyShortcut.getGroupFromL10nId(
+          KeyShortcut.sanitizeL10nId(key.getAttribute('data-l10n-id')),
+          key.getAttribute('id')
+        ),
+      nsKeyShortcutModifiers.parseFromXHTMLAttribute(key.getAttribute('modifiers')),
       key.getAttribute('command'),
       key.getAttribute('data-l10n-id'),
       key.getAttribute('disabled') == 'true',
@@ -394,12 +414,12 @@ class KeyShortcut {
     }
     key.setAttribute('group', this.#group);
 
-    // note to "mr. macos": We add the `zen-` prefix because firefox hasnt been built with the
+    // note to "mr. macos": We add the `zen-` prefix because Firefox hasnt been built with the
     // shortcuts in mind, it will simply just override the shortcuts with whatever the default is.
     //  note that this l10n id is not used for actually translating the key's label, but rather to
     //  identify the default keybinds.
     if (this.#l10nId) {
-      key.setAttribute('data-l10n-id', this.#l10nId);
+      // key.setAttribute('data-l10n-id', this.#l10nId);
     }
     key.setAttribute('modifiers', this.#modifiers.toString());
     if (this.#action) {
@@ -484,8 +504,8 @@ class KeyShortcut {
   }
 
   setModifiers(modifiers) {
-    if ((!modifiers) instanceof KeyShortcutModifiers) {
-      throw new Error('Only KeyShortcutModifiers allowed');
+    if ((!modifiers) instanceof nsKeyShortcutModifiers) {
+      throw new Error('Only nsKeyShortcutModifiers allowed');
     }
     this.#modifiers = modifiers;
   }
@@ -534,7 +554,7 @@ class KeyShortcut {
   clearKeybind() {
     this.#key = '';
     this.#keycode = '';
-    this.#modifiers = new KeyShortcutModifiers(false, false, false, false);
+    this.#modifiers = new nsKeyShortcutModifiers(false, false, false, false);
   }
 
   setNewBinding(shortcut) {
@@ -551,7 +571,7 @@ class KeyShortcut {
   }
 }
 
-class ZenKeyboardShortcutsLoader {
+class nsZenKeyboardShortcutsLoader {
   constructor() {}
 
   get shortcutsFile() {
@@ -603,7 +623,7 @@ class ZenKeyboardShortcutsLoader {
         'C',
         '',
         ZEN_COMPACT_MODE_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenCompactModeToggle',
         'zen-compact-mode-shortcut-toggle'
       )
@@ -614,7 +634,7 @@ class ZenKeyboardShortcutsLoader {
         'S',
         '',
         ZEN_COMPACT_MODE_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenCompactModeShowSidebar',
         'zen-compact-mode-shortcut-show-sidebar'
       )
@@ -625,7 +645,7 @@ class ZenKeyboardShortcutsLoader {
         'T',
         '',
         ZEN_COMPACT_MODE_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenCompactModeShowToolbar',
         'zen-compact-mode-shortcut-show-toolbar'
       )
@@ -639,7 +659,7 @@ class ZenKeyboardShortcutsLoader {
           '',
           '',
           ZEN_WORKSPACE_SHORTCUTS_GROUP,
-          KeyShortcutModifiers.fromObject({}),
+          nsKeyShortcutModifiers.fromObject({}),
           `cmd_zenWorkspaceSwitch${i}`,
           `zen-workspace-shortcut-switch-${i}`
         )
@@ -651,7 +671,7 @@ class ZenKeyboardShortcutsLoader {
         'E',
         '',
         ZEN_WORKSPACE_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenWorkspaceForward',
         'zen-workspace-shortcut-forward'
       )
@@ -662,7 +682,7 @@ class ZenKeyboardShortcutsLoader {
         'Q',
         '',
         ZEN_WORKSPACE_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenWorkspaceBackward',
         'zen-workspace-shortcut-backward'
       )
@@ -675,7 +695,7 @@ class ZenKeyboardShortcutsLoader {
         'G',
         '',
         ZEN_SPLIT_VIEW_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenSplitViewGrid',
         'zen-split-view-shortcut-grid'
       )
@@ -686,7 +706,7 @@ class ZenKeyboardShortcutsLoader {
         'V',
         '',
         ZEN_SPLIT_VIEW_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenSplitViewVertical',
         'zen-split-view-shortcut-vertical'
       )
@@ -697,7 +717,7 @@ class ZenKeyboardShortcutsLoader {
         'H',
         '',
         ZEN_SPLIT_VIEW_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenSplitViewHorizontal',
         'zen-split-view-shortcut-horizontal'
       )
@@ -708,7 +728,7 @@ class ZenKeyboardShortcutsLoader {
         'U',
         '',
         ZEN_SPLIT_VIEW_SHORTCUTS_GROUP,
-        KeyShortcutModifiers.fromObject({ accel: true, alt: true }),
+        nsKeyShortcutModifiers.fromObject({ accel: true, alt: true }),
         'cmd_zenSplitViewUnsplit',
         'zen-split-view-shortcut-unsplit'
       )
@@ -743,7 +763,7 @@ class ZenKeyboardShortcutsLoader {
   }
 }
 
-class ZenKeyboardShortcutsVersioner {
+class nsZenKeyboardShortcutsVersioner {
   static LATEST_KBS_VERSION = 9;
 
   constructor() {}
@@ -763,11 +783,11 @@ class ZenKeyboardShortcutsVersioner {
   }
 
   isVersionUpToDate() {
-    return this.version == ZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION;
+    return this.version == nsZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION;
   }
 
   isVersionOutdated() {
-    return this.version < ZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION;
+    return this.version < nsZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION;
   }
 
   migrateIfNeeded(data) {
@@ -786,10 +806,10 @@ class ZenKeyboardShortcutsVersioner {
         'Zen CKS: Migrating shortcuts from version',
         version,
         'to',
-        ZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION
+        nsZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION
       );
       const newData = this.migrate(data, version);
-      this.version = ZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION;
+      this.version = nsZenKeyboardShortcutsVersioner.LATEST_KBS_VERSION;
       return newData;
     }
 
@@ -799,7 +819,7 @@ class ZenKeyboardShortcutsVersioner {
   }
 
   fillDefaultIfNotPresent(data) {
-    for (let shortcut of ZenKeyboardShortcutsLoader.zenGetDefaultShortcuts()) {
+    for (let shortcut of nsZenKeyboardShortcutsLoader.zenGetDefaultShortcuts()) {
       // If it has an ID and we dont find it in the data, we add it
       if (shortcut.getID() && !data.find((s) => s.getID() == shortcut.getID())) {
         data.push(shortcut);
@@ -817,7 +837,7 @@ class ZenKeyboardShortcutsVersioner {
       // Migrate from 0 to 1
       // Here, we do a complet reset of the shortcuts,
       // since nothing seems to work properly.
-      data = ZenKeyboardShortcutsLoader.zenGetDefaultShortcuts();
+      data = nsZenKeyboardShortcutsLoader.zenGetDefaultShortcuts();
     }
     if (version < 2) {
       // Migrate from 1 to 2
@@ -835,7 +855,7 @@ class ZenKeyboardShortcutsVersioner {
           '',
           '',
           ZEN_OTHER_SHORTCUTS_GROUP,
-          KeyShortcutModifiers.fromObject({}),
+          nsKeyShortcutModifiers.fromObject({}),
           'cmd_zenPinnedTabReset',
           'zen-pinned-tab-shortcut-reset'
         )
@@ -847,7 +867,7 @@ class ZenKeyboardShortcutsVersioner {
       //  detection for internal keys was not working properly, so every internal
       //  shortcut was being saved as a user-editable shortcut.
       // This migration will fix this issue.
-      const defaultShortcuts = ZenKeyboardShortcutsLoader.zenGetDefaultShortcuts();
+      const defaultShortcuts = nsZenKeyboardShortcutsLoader.zenGetDefaultShortcuts();
       // Get the default shortcut, compare the id and set the internal flag if needed
       for (let shortcut of data) {
         for (let defaultShortcut of defaultShortcuts) {
@@ -872,7 +892,7 @@ class ZenKeyboardShortcutsVersioner {
           'B',
           '',
           ZEN_OTHER_SHORTCUTS_GROUP,
-          KeyShortcutModifiers.fromObject({ alt: true }),
+          nsKeyShortcutModifiers.fromObject({ alt: true }),
           'cmd_zenToggleSidebar',
           'zen-sidebar-shortcut-toggle'
         )
@@ -887,7 +907,7 @@ class ZenKeyboardShortcutsVersioner {
           'C',
           '',
           ZEN_OTHER_SHORTCUTS_GROUP,
-          KeyShortcutModifiers.fromObject({ accel: true, shift: true }),
+          nsKeyShortcutModifiers.fromObject({ accel: true, shift: true }),
           'cmd_zenCopyCurrentURL',
           'zen-text-action-copy-url-shortcut'
         )
@@ -899,7 +919,7 @@ class ZenKeyboardShortcutsVersioner {
       const listener = (event) => {
         event.stopPropagation();
 
-        const devToolsShortcuts = ZenKeyboardShortcutsLoader.zenGetDefaultDevToolsShortcuts();
+        const devToolsShortcuts = nsZenKeyboardShortcutsLoader.zenGetDefaultDevToolsShortcuts();
         gZenKeyboardShortcutsManager.updatedDefaultDevtoolsShortcuts(devToolsShortcuts);
 
         window.removeEventListener('zen-devtools-keyset-added', listener);
@@ -919,7 +939,7 @@ class ZenKeyboardShortcutsVersioner {
           'C',
           '',
           ZEN_OTHER_SHORTCUTS_GROUP,
-          KeyShortcutModifiers.fromObject({ accel: true, shift: true, alt: true }),
+          nsKeyShortcutModifiers.fromObject({ accel: true, shift: true, alt: true }),
           'cmd_zenCopyCurrentURLMarkdown',
           'zen-text-action-copy-url-markdown-shortcut'
         )
@@ -969,7 +989,7 @@ class ZenKeyboardShortcutsVersioner {
 }
 
 var gZenKeyboardShortcutsManager = {
-  loader: new ZenKeyboardShortcutsLoader(),
+  loader: new nsZenKeyboardShortcutsLoader(),
   _hasToLoadDevtools: false,
   _inlineCommands: [],
 
@@ -982,7 +1002,10 @@ var gZenKeyboardShortcutsManager = {
     //  handled wont wait for the async function to finish.
     void this.getZenKeyset();
 
-    this._hasCleared = Services.prefs.getBoolPref('zen.keyboard.shortcuts.disable-mainkeyset-clear', false);
+    this._hasCleared = Services.prefs.getBoolPref(
+      'zen.keyboard.shortcuts.disable-mainkeyset-clear',
+      false
+    );
     window.addEventListener('zen-devtools-keyset-added', this._hasAddedDevtoolShortcuts.bind(this));
 
     this.init();
@@ -996,8 +1019,6 @@ var gZenKeyboardShortcutsManager = {
       this._applyShortcuts();
 
       await this._saveShortcuts();
-
-      console.info('Zen CKS: Initialized');
     }
   },
 
@@ -1030,7 +1051,7 @@ var gZenKeyboardShortcutsManager = {
     };
 
     const loadedShortcuts = await innerLoad();
-    this.versioner = new ZenKeyboardShortcutsVersioner(loadedShortcuts);
+    this.versioner = new nsZenKeyboardShortcutsVersioner(loadedShortcuts);
     return loadedShortcuts;
   },
 
@@ -1102,7 +1123,7 @@ var gZenKeyboardShortcutsManager = {
   },
 
   _applyShortcuts() {
-    for (const browser of ZenMultiWindowFeature.browsers) {
+    for (const browser of nsZenMultiWindowFeature.browsers) {
       let mainKeyset = browser.document.getElementById(ZEN_MAIN_KEYSET_ID);
       if (!mainKeyset) {
         throw new Error('Main keyset not found');
@@ -1139,7 +1160,7 @@ var gZenKeyboardShortcutsManager = {
       if (key.getGroup() != 'devTools') {
         continue;
       }
-      if (ZenKeyboardShortcutsLoader.IGNORED_DEVTOOLS_SHORTCUTS.includes(key.getID())) {
+      if (nsZenKeyboardShortcutsLoader.IGNORED_DEVTOOLS_SHORTCUTS.includes(key.getID())) {
         continue;
       }
       const originalKey = browser.document.getElementById(key.getID());
@@ -1165,7 +1186,7 @@ var gZenKeyboardShortcutsManager = {
 
   async _saveShortcuts() {
     let json = [];
-    for (shortcut of this._currentShortcutList) {
+    for (const shortcut of this._currentShortcutList) {
       json.push(shortcut.toJSONForm());
     }
 
@@ -1221,7 +1242,10 @@ var gZenKeyboardShortcutsManager = {
         continue;
       }
 
-      if (targetShortcut.getModifiers().equals(modifiers) && targetShortcut.getKeyNameOrCode()?.toLowerCase() == realShortcut) {
+      if (
+        targetShortcut.getModifiers().equals(modifiers) &&
+        targetShortcut.getKeyNameOrCode()?.toLowerCase() == realShortcut
+      ) {
         return true;
       }
     }

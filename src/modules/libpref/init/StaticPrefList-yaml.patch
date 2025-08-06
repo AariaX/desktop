@@ -1,8 +1,8 @@
 diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
-index a8ba391326f811ae80510585a3c6ab8d7579f739..5e4569032d4c62e59065262f7069663f9acadad1 100644
+index f689389fbc0382f10b7d146273efffdd1db4fd41..955f8e6edda62832ce5aeafd16ed58f5c94e312b 100644
 --- a/modules/libpref/init/StaticPrefList.yaml
 +++ b/modules/libpref/init/StaticPrefList.yaml
-@@ -18804,6 +18804,7 @@
+@@ -19099,6 +19099,7 @@
    mirror: always
  #endif
  

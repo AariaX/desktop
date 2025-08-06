@@ -1,10 +1,12 @@
-import { AppConstants } from 'resource://gre/modules/AppConstants.sys.mjs';
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 export var ZenCustomizableUI = new (class {
   constructor() {}
 
   TYPE_TOOLBAR = 'toolbar';
-  defaultSidebarIcons = ['preferences-button', 'zen-workspaces-button', 'downloads-button'];
+  defaultSidebarIcons = ['downloads-button', 'zen-workspaces-button', 'zen-create-new-button'];
 
   startup(CustomizableUIInternal) {
     CustomizableUIInternal.registerArea(
@@ -18,7 +20,7 @@ export var ZenCustomizableUI = new (class {
       true
     );
     CustomizableUIInternal.registerArea(
-      'zen-sidebar-bottom-buttons',
+      'zen-sidebar-foot-buttons',
       {
         type: this.TYPE_TOOLBAR,
         defaultPlacements: this.defaultSidebarIcons,
@@ -35,6 +37,7 @@ export var ZenCustomizableUI = new (class {
   }
 
   _addSidebarButtons(window) {
+    const kDefaultSidebarWidth = '210px';
     const toolbox = window.gNavToolbox;
 
     // Set a splitter to navigator-toolbox
@@ -48,7 +51,7 @@ export var ZenCustomizableUI = new (class {
     const sidebarBox = window.MozXULElement.parseXULToFragment(`
       <toolbar id="zen-sidebar-top-buttons"
         fullscreentoolbar="true"
-        class="browser-toolbar customization-target zen-dont-hide-on-fullscreen"
+        class="browser-toolbar customization-target"
         brighttext="true"
         data-l10n-id="tabs-toolbar"
         customizable="true"
@@ -77,9 +80,16 @@ export var ZenCustomizableUI = new (class {
     });
 
     // remove all styles except for the width, since we are xulstoring the complet style list
-    const width = toolbox.style.width || '180px';
+    const width = toolbox.style.width || kDefaultSidebarWidth;
     toolbox.removeAttribute('style');
     toolbox.style.width = width;
+    toolbox.setAttribute('width', width);
+
+    splitter.addEventListener('dblclick', (e) => {
+      if (e.button !== 0) return;
+      toolbox.style.width = kDefaultSidebarWidth;
+      toolbox.setAttribute('width', kDefaultSidebarWidth);
+    });
 
     const newTab = window.document.getElementById('vertical-tabs-newtab-button');
     newTab.classList.add('zen-sidebar-action-button');
@@ -90,13 +100,48 @@ export var ZenCustomizableUI = new (class {
       elem.setAttribute('removable', 'true');
     }
 
+    this._initCreateNewButton(window);
     this._moveWindowButtons(window);
+  }
+
+  _initCreateNewButton(window) {
+    const button = window.document.getElementById('zen-create-new-button');
+    button.addEventListener('command', () => {
+      if (button.hasAttribute('open')) {
+        return;
+      }
+      const image = button.querySelector('image');
+      const popup = window.document.getElementById('zenCreateNewPopup');
+      button.setAttribute('open', 'true');
+      const handlePopupHidden = () => {
+        window.setTimeout(() => {
+          button.removeAttribute('open');
+        }, 500);
+        window.gZenUIManager.motion.animate(
+          image,
+          { transform: ['rotate(45deg)', 'rotate(0deg)'] },
+          { duration: 0.2 }
+        );
+      };
+      popup.addEventListener('popuphidden', handlePopupHidden, { once: true });
+      popup.openPopup(button, 'after_start');
+      window.gZenUIManager.motion.animate(
+        image,
+        { transform: ['rotate(0deg)', 'rotate(45deg)'] },
+        { duration: 0.2 }
+      );
+    });
   }
 
   _moveWindowButtons(window) {
     const windowControls = window.document.getElementsByClassName('titlebar-buttonbox-container');
-    const toolboxIcons = window.document.getElementById('zen-sidebar-top-buttons-customization-target');
-    if (window.AppConstants.platform === 'macosx' || window.matchMedia('(-moz-gtk-csd-reversed-placement)').matches) {
+    const toolboxIcons = window.document.getElementById(
+      'zen-sidebar-top-buttons-customization-target'
+    );
+    if (
+      window.AppConstants.platform === 'macosx' ||
+      window.matchMedia('(-moz-gtk-csd-reversed-placement)').matches
+    ) {
       for (let i = 0; i < windowControls.length; i++) {
         if (i === 0) {
           toolboxIcons.prepend(windowControls[i]);
@@ -108,8 +153,8 @@ export var ZenCustomizableUI = new (class {
   }
 
   _hideToolbarButtons(window) {
-    const wrapper = window.document.getElementById('zen-sidebar-bottom-buttons');
-    const elementsToHide = ['alltabs-button', 'new-tab-button'];
+    const wrapper = window.document.getElementById('zen-sidebar-foot-buttons');
+    const elementsToHide = ['new-tab-button'];
     for (let id of elementsToHide) {
       const elem = window.document.getElementById(id);
       if (elem) {
@@ -123,7 +168,11 @@ export var ZenCustomizableUI = new (class {
   }
 
   registerToolbarNodes(window) {
-    window.CustomizableUI.registerToolbarNode(window.document.getElementById('zen-sidebar-top-buttons'));
-    window.CustomizableUI.registerToolbarNode(window.document.getElementById('zen-sidebar-bottom-buttons'));
+    window.CustomizableUI.registerToolbarNode(
+      window.document.getElementById('zen-sidebar-top-buttons')
+    );
+    window.CustomizableUI.registerToolbarNode(
+      window.document.getElementById('zen-sidebar-foot-buttons')
+    );
   }
 })();

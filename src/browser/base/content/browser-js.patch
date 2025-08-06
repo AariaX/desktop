@@ -1,8 +1,8 @@
 diff --git a/browser/base/content/browser.js b/browser/base/content/browser.js
-index ea79d296e7dd0f8fd812b0677a252af5cf7ad26e..bd95ef5d6b99399c859af1cf71d9d62477f4ac2b 100644
+index 8e839c497bba9de04948ad8759679b6a6f61a65f..d79bd14443d94b91309f0add133e35ab87d7fbf3 100644
 --- a/browser/base/content/browser.js
 +++ b/browser/base/content/browser.js
-@@ -33,6 +33,7 @@ ChromeUtils.defineESModuleGetters(this, {
+@@ -29,6 +29,7 @@ ChromeUtils.defineESModuleGetters(this, {
    ContextualIdentityService:
      "resource://gre/modules/ContextualIdentityService.sys.mjs",
    CustomizableUI: "resource:///modules/CustomizableUI.sys.mjs",
@@ -10,33 +10,40 @@ index ea79d296e7dd0f8fd812b0677a252af5cf7ad26e..bd95ef5d6b99399c859af1cf71d9d624
    DevToolsSocketStatus:
      "resource://devtools/shared/security/DevToolsSocketStatus.sys.mjs",
    DownloadUtils: "resource://gre/modules/DownloadUtils.sys.mjs",
-@@ -2338,6 +2339,11 @@ var XULBrowserWindow = {
+@@ -2282,6 +2283,8 @@ var XULBrowserWindow = {
      AboutReaderParent.updateReaderButton(gBrowser.selectedBrowser);
      TranslationsParent.onLocationChange(gBrowser.selectedBrowser);
  
-+    gZenViewSplitter.onLocationChange(gBrowser.selectedBrowser);
-+    ZenWorkspaces.onLocationChange(gBrowser.selectedBrowser);
-+    gZenTabUnloader.onLocationChange(gBrowser.selectedBrowser);
 +    gZenPinnedTabManager.onLocationChange(gBrowser.selectedBrowser);
 +
      PictureInPicture.updateUrlbarToggle(gBrowser.selectedBrowser);
  
      if (!gMultiProcessBrowser) {
-@@ -4814,7 +4820,7 @@ function switchToTabHavingURI(
+@@ -4617,7 +4620,7 @@ function switchToTabHavingURI(
        ignoreQueryString || replaceQueryString,
        ignoreFragmentWhenComparing
      );
 -    let browsers = aWindow.gBrowser.browsers;
-+    let browsers = aWindow.ZenWorkspaces.allUsedBrowsers;
++    let browsers = aWindow.gZenWorkspaces.allUsedBrowsers;
      for (let i = 0; i < browsers.length; i++) {
        let browser = browsers[i];
        let browserCompare = cleanURL(
-@@ -4857,7 +4863,7 @@ function switchToTabHavingURI(
+@@ -4660,7 +4663,7 @@ function switchToTabHavingURI(
          }
  
          if (!doAdopt) {
 -          aWindow.gBrowser.tabContainer.selectedIndex = i;
-+          aWindow.ZenWorkspaces.switchIfNeeded(browser, i);
++          aWindow.gZenWorkspaces.switchIfNeeded(browser);
          }
  
          return true;
+@@ -5476,6 +5479,9 @@ var ConfirmationHint = {
+     MozXULElement.insertFTLIfNeeded("toolkit/branding/brandings.ftl");
+     MozXULElement.insertFTLIfNeeded("browser/confirmationHints.ftl");
+     document.l10n.setAttributes(this._message, messageId, options.l10nArgs);
++    if (window.gZenUIManager?.showToast) {
++      return window.gZenUIManager.showToast(messageId, options);
++    }
+     if (options.descriptionId) {
+       document.l10n.setAttributes(this._description, options.descriptionId);
+       this._description.hidden = false;
